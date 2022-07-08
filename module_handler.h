@@ -64,8 +64,8 @@ extern volatile sensors_t found_sensors[];
 #define LPP_CHANNEL_BATT 1	// Base Board
 #define LPP_CHANNEL_HUMID 2 // RAK1901
 #define LPP_CHANNEL_TEMP 3	// RAK1901
-// #define LPP_CHANNEL_PRESS 4			   // RAK1902
-// #define LPP_CHANNEL_LIGHT 5			   // RAK1903
+#define LPP_CHANNEL_PRESS 4			   // RAK1902
+#define LPP_CHANNEL_LIGHT 5			   // RAK1903
 #define LPP_CHANNEL_HUMID_2 6 // RAK1906
 #define LPP_CHANNEL_TEMP_2 7  // RAK1906
 #define LPP_CHANNEL_PRESS_2 8 // RAK1906
@@ -117,7 +117,7 @@ void read_rak12047(void);
 // Custom AT commands
 bool get_at_setting(uint32_t setting_type);
 bool save_at_setting(uint32_t setting_type);
-bool init_frequency_at(void);
+bool init_custom_at(void);
 
 /** Settings offset in flash */
 // #define GNSS_OFFSET 0x00000000		// length 1 byte

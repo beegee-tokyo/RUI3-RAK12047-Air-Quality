@@ -20,16 +20,14 @@ WisCayenne g_solution_data(255);
 /** Set the device name, max length is 10 characters */
 char g_dev_name[64] = "RUI3 Sensor Node                                              ";
 
-/** Device settings */
-s_lorawan_settings g_lorawan_settings;
-s_lorawan_settings check_settings;
+/** Fport to be used to send data */
+uint8_t g_fport = 2;
 
-/** OTAA Device EUI MSB */
-uint8_t node_device_eui[8] = {0}; // ac1f09fff8683172
-/** OTAA Application EUI MSB */
-uint8_t node_app_eui[8] = {0}; // ac1f09fff8683172
-/** OTAA Application Key MSB */
-uint8_t node_app_key[16] = {0}; // efadff29c77b4829acf71e1a6e76f713
+// Send frequency, default is off
+uint32_t g_send_repeat_time = 0;
+
+// Flag to enable confirmed messages
+bool confirmed_msg_enabled = false;
 
 /**
  * @brief Callback after packet was received
@@ -39,11 +37,13 @@ uint8_t node_app_key[16] = {0}; // efadff29c77b4829acf71e1a6e76f713
 void receiveCallback(SERVICE_LORA_RECEIVE_T *data)
 {
 	MYLOG("RX-CB", "RX, fP %d, DR %d, RSSI %d, SNR %d", data->Port, data->RxDatarate, data->Rssi, data->Snr);
+#if MY_DEBUG > 0
 	for (int i = 0; i < data->BufferSize; i++)
 	{
 		Serial.printf("%02X", data->Buffer[i]);
 	}
 	Serial.print("\r\n");
+#endif
 }
 
 /**
@@ -64,7 +64,6 @@ void sendCallback(int32_t status)
  */
 void joinCallback(int32_t status)
 {
-	// MYLOG("JOIN-CB", "Join result %d", status);
 	if (status != 0)
 	{
 		if (!(ret = api.lorawan.join()))
@@ -74,10 +73,15 @@ void joinCallback(int32_t status)
 	}
 	else
 	{
-		MYLOG("J-CB", "DR  %s", api.lorawan.dr.set(g_lorawan_settings.data_rate) ? "OK" : "NOK");
-		MYLOG("J-CB", "ADR  %s", api.lorawan.adr.set(g_lorawan_settings.adr_enabled ? 1 : 0) ? "OK" : "NOK");
 		MYLOG("J-CB", "Joined\r\n");
+		// We need at least DR3 for the packet size
+		MYLOG("J-CB", "DR3 %s", api.lorawan.dr.set(3) ? "OK" : "NOK");
 		digitalWrite(LED_BLUE, LOW);
+		if (g_send_repeat_time != 0)
+		{
+			// Start a unified C timer in C language. This API is defined in udrv_timer.h. It will be replaced by api.system.timer.start() after story #1195 is done.
+			udrv_timer_start(TIMER_0, g_send_repeat_time, NULL);
+		}
 	}
 }
 
@@ -87,6 +91,11 @@ void joinCallback(int32_t status)
  */
 void setup()
 {
+	// Setup the callbacks for joined and send finished
+	api.lorawan.registerRecvCallback(receiveCallback);
+	api.lorawan.registerSendCallback(sendCallback);
+	api.lorawan.registerJoinCallback(joinCallback);
+
 	pinMode(LED_GREEN, OUTPUT);
 	digitalWrite(LED_GREEN, HIGH);
 	pinMode(LED_BLUE, OUTPUT);
@@ -124,153 +133,28 @@ void setup()
 	find_modules();
 
 	MYLOG("SET", "RAKwireless %s Node", g_dev_name);
-	// MYLOG("SET", "------------------------------------------------------");
 
-	/************************************************************************/
-	/* Experimental                                                         */
-	/* LoRaWAN credentials and settings are taken from structure            */
-	/* s_lorawan_settings. This is used in Arduino BSP WisBlock API and not */
-	/* fully implemented here. Once custom AT commands are available this   */
-	/* can be improved or removed                                           */
-	/************************************************************************/
-	bool creds_ok = true;
-	if (api.lorawan.appeui.get(node_app_eui, 8))
-	{
-		if (node_app_eui[0] == 0)
-		{
-			if (!api.lorawan.appeui.set(g_lorawan_settings.node_app_eui, 8))
-			{
-				// MYLOG("SET", "App EUI failed!");
-				return;
-			}
-		}
-	}
+	MYLOG("SET", "Setup your device with AT commands");
 
-	if (api.lorawan.appkey.get(node_app_key, 16))
-	{
-		if (node_app_key[0] == 0)
-		{
-			if (!api.lorawan.appkey.set(g_lorawan_settings.node_app_key, 16))
-			{
-				// MYLOG("SET", "Application key failed!");
-				return;
-			}
-		}
-	}
-
-	if (api.lorawan.deui.get(node_device_eui, 8))
-	{
-		if (node_device_eui[0] == 0)
-		{
-			if (!api.lorawan.deui.set(g_lorawan_settings.node_device_eui, 8))
-			{
-				// MYLOG("SET", "Device EUI failed! \r\n");
-				return;
-			}
-		}
-	}
-
-	/*************************************
-	LoRaWAN band setting:
-	RAK_REGION_EU433	0
-	RAK_REGION_CN470	1
-	RAK_REGION_RU864	2
-	RAK_REGION_IN865	3
-	RAK_REGION_EU868	4
-	RAK_REGION_US915	5
-	RAK_REGION_AU915	6
-	RAK_REGION_KR920	7
-	RAK_REGION_AS923	8
-	RAK_REGION_AS923-2	9
-	RAK_REGION_AS923-3	10
-	RAK_REGION_AS923-4	11
-	*************************************/
-
-	// Set class
-	// MYLOG("SET", "Set Class A %s", api.lorawan.deviceClass.set(0) ? "OK" : "NOK");
-	api.lorawan.deviceClass.set(0);
-
-	// Set region
-	uint8_t curr_band = (uint8_t)api.lorawan.band.get();
-	// MYLOG("SET", "Current region %d", curr_band);
-	if (curr_band == g_lorawan_settings.lora_region)
-	{
-		// MYLOG("SET", "Band is already %d", curr_band);
-	}
-	else
-	{
-		// MYLOG("SET", "Region %s", api.lorawan.band.set(g_lorawan_settings.lora_region) ? "OK" : "NOK");
-		api.lorawan.band.set(g_lorawan_settings.lora_region);
-	}
-
-	// MYLOG("SET", "TXP %s", api.lorawan.txp.set(g_lorawan_settings.tx_power) ? "OK" : "NOK");
-	api.lorawan.txp.set(g_lorawan_settings.tx_power);
-
-	// Set subband (only US915, AU195 and CN470)
-	if ((g_lorawan_settings.lora_region == RAK_REGION_US915) ||
-		(g_lorawan_settings.lora_region == RAK_REGION_AU915) ||
-		(g_lorawan_settings.lora_region == RAK_REGION_CN470))
-	{
-		uint16_t maskBuff = 0x0001 << (g_lorawan_settings.subband_channels - 1);
-		// MYLOG("SET", "Channel mask %s", api.lorawan.mask.set(&maskBuff) ? "OK" : "NOK");
-		api.lorawan.mask.set(&maskBuff);
-		// maskBuff = 0x0000;
-		// api.lorawan.mask.get(&maskBuff);
-		// MYLOG("SET", "Channel mask is set to 0x%04X", maskBuff);
-	}
-
-	// Set the network join mode
-	// MYLOG("SET", "Join mode %s", api.lorawan.njm.set(g_lorawan_settings.otaa_enabled) ? "OK" : "NOK");
-	api.lorawan.njm.set(g_lorawan_settings.otaa_enabled);
-
-	// Set packet mode (confirmed/unconfirmed)
-	if (g_lorawan_settings.confirmed_msg_enabled)
-	{
-		// MYLOG("SET", "Conf. packets  %s", api.lorawan.cfm.set(0) ? "OK" : "NOK");
-		api.lorawan.cfm.set(0);
-	}
-	else
-	{
-		// MYLOG("SET", "Unconf. packets  %s", api.lorawan.cfm.set(1) ? "OK" : "NOK");
-		api.lorawan.cfm.set(1);
-	}
-
-	// Start the join process
-	if (!(ret = api.lorawan.join()))
-	{
-		MYLOG("SET", "Join fail! \r\n");
-		return;
-	}
 	digitalWrite(LED_GREEN, LOW);
 
-	// Setup the callbacks for joined and send finished
-	api.lorawan.registerRecvCallback(receiveCallback);
-	api.lorawan.registerSendCallback(sendCallback);
-	api.lorawan.registerJoinCallback(joinCallback);
-
-	// MYLOG("SET", "Send frequency  %s", init_frequency_at() ? "OK" : "NOK");
-	init_frequency_at();
+	init_custom_at();
 	get_at_setting(SEND_FREQ_OFFSET);
 
 	// Create a unified timer in C language. This API is defined in udrv_timer.h. It will be replaced by api.system.timer.create() after story #1195 is done.
 	udrv_timer_create(TIMER_0, sensor_handler, HTMR_PERIODIC);
-	if (g_lorawan_settings.send_repeat_time != 0)
-	{
-		// Start a unified C timer in C language. This API is defined in udrv_timer.h. It will be replaced by api.system.timer.start() after story #1195 is done.
-		udrv_timer_start(TIMER_0, g_lorawan_settings.send_repeat_time, NULL);
-	}
 
-	// MYLOG("SET", "Start Join");
-	api.lorawan.join();
-
+	// Get the confirmed mode settings
+	confirmed_msg_enabled = api.lorawan.cfm.get();
+	MYLOG("SET", "Confirmed message is %s", api.lorawan.cfm.get() == 0 ? "off" : "on");
 	// Show found modules
 	announce_modules();
 }
 
 /**
  * @brief sensor_handler is a timer function called every
- * g_lorawan_settings.send_repeat_time milliseconds. Default is 120000. Can be
- * changed in main.h
+ * g_send_repeat_time milliseconds. Default is 120000. Can be
+ * changed with a custom AT command ATC+SENDFREQ
  *
  */
 void sensor_handler(void *)
@@ -293,11 +177,10 @@ void sensor_handler(void *)
 
 	// Add battery voltage
 	g_solution_data.addVoltage(LPP_CHANNEL_BATT, api.system.bat.get());
-	// MYLOG("UPL", "Bat %.4f", api.system.bat.get());
-	// MYLOG("UPL", "Send %d", g_solution_data.getSize());
 
+	MYLOG("UPL", "Packet size = %d", g_solution_data.getSize());
 	// Send the packet
-	if (api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), 2, g_lorawan_settings.confirmed_msg_enabled))
+	if (api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), g_fport, confirmed_msg_enabled))
 	{
 		MYLOG("UPL", "Enqueued");
 	}

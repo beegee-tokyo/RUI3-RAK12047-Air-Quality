@@ -186,3 +186,21 @@ function Decoder(bytes, port) {
 	return { data: response };
 }
 
+
+// function decodeDownlink(input) {
+// 	switch (input.fPort) {
+// 		case 2:
+// 			return {
+// 				data: {
+// 					msg_num: [input.bytes[0]],
+// 					min_rssi: [input.bytes[1] - 200],
+// 					max_rssi: [input.bytes[2] - 200],
+// 					min_distance: [input.bytes[3] * 250],
+// 					max_distance: [input.bytes[4] * 250],
+// 					num_gateways: [input.bytes[5]]
+// 				}
+// 			}
+// 		default:
+// 			throw Error("unknown FPort");
+// 	}
+// }

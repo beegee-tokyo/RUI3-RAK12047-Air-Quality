@@ -10,9 +10,11 @@ With the new WisBlock RAK12047 VOC sensor it is easy to build a sensor system fo
 The code compiles on both RAK4631-R and RAK3172 and I test it on both modules.
 
 # Content
-- [Hardware supported](#hardware_supported)
-- [Software used](#software_used)
-- [Packet data format](#packet_data_format)
+- [Hardware supported](#hardware-supported)
+- [Software used](#software-used)
+- [Packet data format](#packet-data-format)
+- [Device setup](#device-setup)
+- [Data visualization and creating an alarm](#data-visualization-and-creating-an-alarm)
 
 ----
 
@@ -25,14 +27,16 @@ The code compiles on both RAK4631-R and RAK3172 and I test it on both modules.
 | [RAK19003](https://docs.rakwireless.com/Product-Categories/WisBlock/RAK19003/Overview/) ⤴️ | WisBlock Mini Base board | ✔ |
 | [RAK19001](https://docs.rakwireless.com/Product-Categories/WisBlock/RAK19001/Overview/) ⤴️ | WisBlock Fullsize Base board | ✔ |
 | [RAK1901](https://docs.rakwireless.com/Product-Categories/WisBlock/RAK1901/Overview/) ⤴️ | WisBlock Temperature and Humidity Sensor | ✔ |
-| [RAK1906](https://docs.rakwireless.com/Product-Categories/WisBlock/RAK1906/Overview/) ⤴️ | WisBlock Environment Sensor | ✔ |
+| [_alternative_ RAK1906](https://docs.rakwireless.com/Product-Categories/WisBlock/RAK1906/Overview/) ⤴️ | WisBlock Environment Sensor | ✔ |
 | [RAK12047](https://docs.rakwireless.com/Product-Categories/WisBlock/RAK12047/Overview/) ⤴️ | WisBlock VOC sensor | ✔ |
 
 ----
 
 # Software used
 ## IDE
-- [ArduinoIDE](https://www.arduino.cc/en/software) ⤴️
+- [Visual Studio Code](https://code.visualstudio.com/) ⤴️
+- [Arduino Extension for VSC](https://marketplace.visualstudio.com/items?itemName=vsciot-vscode.vscode-arduino) ⤴️
+- [_alternative_ ArduinoIDE](https://www.arduino.cc/en/software) ⤴️
 - [RAK-STM32-RUI](https://github.com/RAKWireless/RAKwireless-Arduino-BSP-Index) ⤴️
 - [RAK-nRF52-RUI](https://github.com/RAKWireless/RAKwireless-Arduino-BSP-Index) ⤴️
 ## LoRaWAN payload creation
@@ -45,6 +49,8 @@ The code compiles on both RAK4631-R and RAK3172 and I test it on both modules.
 - [Sensirion Core](https://registry.platformio.org/libraries/sensirion/Sensirion%20Core) ⤴️
 - [Sensirion Gas Index Algorithm](https://registry.platformio.org/libraries/sensirion/Sensirion%20Gas%20Index%20Algorithm) ⤴️
 - [Sensirion I2C SGP40](https://registry.platformio.org/libraries/sensirion/Sensirion%20I2C%20SGP40) ⤴️
+## Device setup
+- [WisToolBox](https://docs.rakwireless.com/Product-Categories/Software-Tools/WisToolBox/Overview) ⤴️
 
 ----
 
@@ -72,3 +78,30 @@ Example decoders for TTN, Chirpstack, Helium and Datacake can be found in the fo
 | ![Livingroom](./assets/Livingroom.jpg) | ![VOC sensor](./assets/Close-up.jpg) |
 | -- | -- |
 | ![VOC sensor](./assets/Open.jpg) | ![VOC sensor](./assets/Sensors.jpg) |
+
+# Device setup
+After the WisBlock Air Quality Sensor is flashed with the firmware, it needs to be registered on a LoRaWAN server to be able to send the measured data. Tutorials how to setup a LoRaWAN node on a LoRaWAN server can be found in the [RAKwireless Documentation Center](https://docs.rakwireless.com/Product-Categories/WisDuo/RAK3172-Module/Quickstart/#rak3172-as-a-lora-lorawan-modem-via-at-command).    
+
+After the device is registered on a LoRaWAN server it can be setup and activated with AT commands through the USB connection with a Serial Terminal application or with the [RAKwireless WisToolBox](https://docs.rakwireless.com/Product-Categories/Software-Tools/WisToolBox/Overview/).
+
+Connect to the device with WisToolBox
+![WisToolBox Connection](./assets/wistoolbox-1.png)
+
+Goto Parameters section and setup the LoRaWAN connection mode, and the LoRaWAN keys, ID and EUI 
+![WisToolBox Parameter Setup](./assets/wistoolbox-2.png)
+
+Then select how the device should connect to the LoRaWAN server. I suggest to set it activate _**Automatic access**_. If this is choosen, the device will automatically join the network after a reboot or power up.
+![WisToolBox Join Settings](./assets/wistoolbox-3.png)
+
+# Data visualization and creating an alarm
+
+As we can receive the data in the LoRaWAN server, we need to create an integration to a visualization tool. I prefer [Datacake](https://datacake.co/), it is very easy to setup and it is as well easy to create reactions on events by either sending a text message, email or create a downlink message to another LoRaWAN device. That could be used for example to control fans or air conditioners to start refreshing the air in the room with the bad air quality condition.
+
+After setting up the device in Datacake and creating the Dashboard the VOC index can be visualized:
+![Datacake Visualization](./assets/datacake-1.png)
+
+And using the Datacake rules we can create an email warning about the bad air quality:
+![Datacake Rule](./assets/datacake-2.png)
+
+This will send out an email with the VOC level and an advice:
+![Datacake Alert](./assets/datacake-3.png)

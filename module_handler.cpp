@@ -134,11 +134,8 @@ void announce_modules(void)
 	if (found_sensors[ENV_ID].found_sensor)
 	{
 		Serial.println("+EVT:RAK1906");
-		// // Start reading sensor data
-		// start_rak1906();
-		// delay(100);
-		// // Reading sensor data
-		// read_rak1906();
+		// Reading sensor data
+		read_rak1906();
 	}
 
 	if (found_sensors[TEMP_ID].found_sensor)

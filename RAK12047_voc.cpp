@@ -138,7 +138,7 @@ void read_rak12047(void)
 void do_read_rak12047(void *)
 {
 #if MY_DEBUG > 0
-	digitalWrite(LED_BLUE, HIGH);
+	digitalWrite(LED_GREEN, HIGH);
 #endif
 	uint16_t error;
 	uint16_t srawVoc = 0;
@@ -206,6 +206,6 @@ void do_read_rak12047(void *)
 	}
 
 #if MY_DEBUG > 0
-	digitalWrite(LED_BLUE, LOW);
+	digitalWrite(LED_GREEN, LOW);
 #endif
 }
