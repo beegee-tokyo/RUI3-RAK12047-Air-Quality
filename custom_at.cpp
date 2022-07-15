@@ -189,9 +189,21 @@ bool save_at_setting(uint32_t setting_type)
 	return false;
 }
 
+/** Regions as text array */
 char *regions_list[] = {"EU433", "CN470", "RU864", "IN865", "EU868", "US915", "AU915", "KR920", "AS923", "AS923-2", "AS923-3", "AS923-4"};
+/** Network modes as text array*/
 char *nwm_list[] = {"P2P", "LoRaWAN", "FSK"};
 
+/**
+ * @brief Print device status over Serial
+ *
+ * @param port Serial port used
+ * @param cmd char array with the received AT command
+ * @param param char array with the received AT command parameters
+ * @return int result of command parsing
+ * 			AT_OK AT command & parameters valid
+ * 			AT_PARAM_ERROR command or parameters invalid
+ */
 int status_handler(SERIAL_PORT port, char *cmd, stParam *param)
 {
 	String value_str = "";
@@ -206,7 +218,7 @@ int status_handler(SERIAL_PORT port, char *cmd, stParam *param)
 		value_str.toUpperCase();
 		Serial.printf("Module: %s\r\n", value_str.c_str());
 		Serial.printf("Version: %s\r\n", api.system.firmwareVersion.get().c_str());
-		Serial.printf("Send time: %d s\r\n", g_send_repeat_time/1000);
+		Serial.printf("Send time: %d s\r\n", g_send_repeat_time / 1000);
 		nw_mode = api.lorawan.nwm.get();
 		Serial.printf("Network mode %s\r\n", nwm_list[nw_mode]);
 		if (nw_mode == 1)
