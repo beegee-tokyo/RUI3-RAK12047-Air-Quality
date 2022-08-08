@@ -9,7 +9,6 @@
  *
  */
 #include "main.h"
-#include "udrv_timer.h"
 
 /** Initialization results */
 bool ret;
@@ -18,7 +17,7 @@ bool ret;
 WisCayenne g_solution_data(255);
 
 /** Set the device name, max length is 10 characters */
-char g_dev_name[64] = "RUI3 Sensor Node                                              ";
+char g_dev_name[64] = "RUI3 Air Quality";
 
 /** Fport to be used to send data */
 uint8_t g_fport = 2;
@@ -73,14 +72,15 @@ void joinCallback(int32_t status)
 	}
 	else
 	{
-		MYLOG("J-CB", "Joined\r\n");
+		// MYLOG("J-CB", "Joined\r\n");
 		// We need at least DR3 for the packet size
-		MYLOG("J-CB", "DR3 %s", api.lorawan.dr.set(3) ? "OK" : "NOK");
+		api.lorawan.dr.set(3);
+		// MYLOG("J-CB", "DR3 %s", api.lorawan.dr.set(3) ? "OK" : "NOK");
 		digitalWrite(LED_BLUE, LOW);
 		if (g_send_repeat_time != 0)
 		{
-			// Start a unified C timer in C language. This API is defined in udrv_timer.h. It will be replaced by api.system.timer.start() after story #1195 is done.
-			udrv_timer_start(TIMER_0, g_send_repeat_time, NULL);
+			// Start a unified C timer
+			api.system.timer.start(RAK_TIMER_0, g_send_repeat_time, NULL);
 		}
 	}
 }
@@ -141,14 +141,19 @@ void setup()
 	init_custom_at();
 	get_at_setting(SEND_FREQ_OFFSET);
 
-	// Create a unified timer in C language. This API is defined in udrv_timer.h. It will be replaced by api.system.timer.create() after story #1195 is done.
-	udrv_timer_create(TIMER_0, sensor_handler, HTMR_PERIODIC);
+	// Create a unified timer
+	api.system.timer.create(RAK_TIMER_0, sensor_handler, RAK_TIMER_PERIODIC);
 
 	// Get the confirmed mode settings
 	confirmed_msg_enabled = api.lorawan.cfm.get();
 	MYLOG("SET", "Confirmed message is %s", api.lorawan.cfm.get() == 0 ? "off" : "on");
 	// Show found modules
 	announce_modules();
+	if (!found_sensors[PM_ID].found_sensor && !found_sensors[VOC_ID].found_sensor)
+	{
+		// Switch off sensors
+		digitalWrite(WB_IO2, LOW);
+	}
 }
 
 /**
@@ -159,6 +164,12 @@ void setup()
  */
 void sensor_handler(void *)
 {
+	if (!found_sensors[PM_ID].found_sensor && !found_sensors[VOC_ID].found_sensor)
+	{
+		// Switch on Sensors
+		digitalWrite(WB_IO2, HIGH);
+		delay(100);
+	}
 	// MYLOG("SENS", "Start");
 	digitalWrite(LED_BLUE, HIGH);
 
@@ -178,6 +189,11 @@ void sensor_handler(void *)
 	// Add battery voltage
 	g_solution_data.addVoltage(LPP_CHANNEL_BATT, api.system.bat.get());
 
+	if (!found_sensors[PM_ID].found_sensor && !found_sensors[VOC_ID].found_sensor)
+	{
+		// Switch sensors off
+		digitalWrite(WB_IO2, LOW);
+	}
 	MYLOG("UPL", "Packet size = %d", g_solution_data.getSize());
 	// Send the packet
 	if (api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), g_fport, confirmed_msg_enabled))

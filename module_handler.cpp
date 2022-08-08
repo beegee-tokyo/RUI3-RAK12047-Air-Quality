@@ -28,7 +28,7 @@ volatile sensors_t found_sensors[] = {
 	{0x10, 0, false}, //  7 RAK12010 light sensor
 	{0x51, 0, false}, //  8 RAK12004 MQ2 CO2 gas sensor
 	{0x50, 0, false}, //  9 RAK15000 EEPROM !! conflict with RAK12008
-	{0x50, 0, false}, // 10 RAK12008 MG812 CO2 gas sensor
+	{0x50, 0, false}, // 10 ✔ RAK12008 STC31 CO2 gas sensor
 	{0x55, 0, false}, // 11 RAK12009 MQ3 Alcohol gas sensor
 	{0x29, 0, false}, // 12 RAK12014 Laser ToF sensor
 	{0x52, 0, false}, // 13 RAK12002 RTC module address
@@ -45,14 +45,19 @@ volatile sensors_t found_sensors[] = {
 	{0x3A, 0, false}, // 24 RAK12003 IR temperature sensor
 	{0x68, 0, false}, // 25 RAK12040 AMG8833 temperature array sensor
 	{0x57, 0, false}, // 26 RAK12012 MAX30102 heart rate sensor
-	{0x54, 0, false}, // 27 RAK12016 Flex sensor
-	{0x47, 0, false}, // 28 RAK13004 PWM expander module
-	{0x38, 0, false}, // 29 RAK14001 RGB LED module
-	{0x5F, 0, false}, // 30 RAK14004 Keypad interface
-	{0x61, 0, false}, // 31 RAK16001 ADC sensor !! address conflict with RAK12037
-	{0x59, 0, false}, // 32 RAK13600 NFC !! address conflict with RAK12047, RAK13600
-	{0x59, 0, false}, // 33 RAK16002 Coulomb sensor !! address conflict with RAK13600, RAK12047
-	{0x20, 0, false}, // 34 RAK13003 IO expander module !! address conflict with RAK12035
+	{0x69, false},	  // 26 RAK12034 BMX160 9DOF sensor
+	{0x1D, false},	  // 27 RAK12032 ADXL313 accelerometer
+	{0x12, false},	  // 28 ✔ RAK12039 PMSA003I particle matter sensor
+	// {0x57, false},	  // 29 RAK12012 MAX30102 heart rate sensor
+	// {0x54, false},	  // 30 RAK12016 Flex sensor
+	// {0x47, false},	  // 31 RAK13004 PWM expander module
+	// {0x38, false},	  // 32 RAK14001 RGB LED module
+	// {0x5F, false},	  // 33 RAK14004 Keypad interface
+	// {0x61, false},	  // 34 RAK16001 ADC sensor !! conflict with RAK12037
+	// {0x59, false},	  // 35 RAK13600 NFC !! conflict with RAK12047, RAK13600, RAK5814
+	// {0x59, false},	  // 36 RAK16002 Coulomb sensor !! conflict with RAK13600, RAK12047, RAK5814
+	// {0x20, false},	  // 37 RAK13003 IO expander module !! conflict with RAK12035
+	// {0x59, false},	  // 38 RAK5814 ACC608 encryption module (limited I2C speed 100000) !! conflict with RAK12047, RAK13600, RAK13003
 };
 
 /**
@@ -66,9 +71,35 @@ void find_modules(void)
 	uint8_t num_dev = 0;
 
 	Wire.begin();
-	Wire.setClock(400000);
+	Wire.setClock(100000);
 	for (byte address = 1; address < 127; address++)
 	{
+		if (address == 0x12)
+		{
+			// RAK12039 has extra GPIO for power control
+			// On/Off control pin
+			pinMode(WB_IO6, OUTPUT);
+			// Sensor on
+			digitalWrite(WB_IO6, HIGH);
+			time_t wait_sensor = millis();
+			// MYLOG("SCAN", "RAK12039 scan start %ld ms", millis());
+			while (1)
+			{
+				delay(500);
+				Wire.beginTransmission(address);
+				error = Wire.endTransmission();
+				if (error == 0)
+				{
+					MYLOG("SCAN", "RAK12039 answered at %ld ms", millis());
+					break;
+				}
+				if ((millis() - wait_sensor) > 5000)
+				{
+					MYLOG("SCAN", "RAK12039 timeout after %ld ms", 5000);
+					break;
+				}
+			}
+		}
 		Wire.beginTransmission(address);
 		error = Wire.endTransmission();
 		if (error == 0)
@@ -89,11 +120,7 @@ void find_modules(void)
 
 	if (found_sensors[ENV_ID].found_sensor)
 	{
-		if (init_rak1906())
-		{
-			sprintf(g_dev_name, "RUI3 Env Sensor");
-		}
-		else
+		if (!init_rak1906())
 		{
 			found_sensors[ENV_ID].found_sensor = false;
 		}
@@ -101,24 +128,30 @@ void find_modules(void)
 
 	if (found_sensors[TEMP_ID].found_sensor)
 	{
-		if (init_rak1901())
-		{
-			sprintf(g_dev_name, "RUI3 ENV Sensor");
-		}
-		else
+		if (!init_rak1901())
 		{
 			found_sensors[TEMP_ID].found_sensor = false;
 		}
 	}
 
+	if (found_sensors[CO2_ID].found_sensor)
+	{
+		if (!init_rak12037())
+		{
+			found_sensors[CO2_ID].found_sensor = false;
+		}
+	}
+	if (found_sensors[PM_ID].found_sensor)
+	{
+		if (!init_rak12039())
+		{
+			found_sensors[PM_ID].found_sensor = false;
+		}
+	}
+
 	if (found_sensors[VOC_ID].found_sensor)
 	{
-		// MYLOG("MOD", "init_rak12047");
-		if (init_rak12047())
-		{
-			sprintf(g_dev_name, "RUI3 VOC Sensor");
-		}
-		else
+		if (!init_rak12047())
 		{
 			found_sensors[VOC_ID].found_sensor = false;
 		}
@@ -145,6 +178,19 @@ void announce_modules(void)
 		read_rak1901();
 	}
 
+	if (found_sensors[CO2_ID].found_sensor)
+	{
+		Serial.println("+EVT:RAK12037 OK\n");
+		read_rak12037();
+	}
+
+	if (found_sensors[PM_ID].found_sensor)
+	{
+		Serial.println("+EVT:RAK12039");
+		// Sensor needs 100 readings before valid data is available.
+		// Makes no sense to read it already.
+	}
+
 	if (found_sensors[VOC_ID].found_sensor)
 	{
 		Serial.println("+EVT:RAK12047");
@@ -169,6 +215,18 @@ void get_sensor_values(void)
 	{
 		// Read sensor data
 		read_rak1901();
+	}
+
+	if (found_sensors[CO2_ID].found_sensor)
+	{
+		// Get the CO2 sensor values
+		read_rak12037();
+	}
+
+	if (found_sensors[PM_ID].found_sensor)
+	{
+		// Get the particle matter sensor values
+		read_rak12039();
 	}
 
 	if (found_sensors[VOC_ID].found_sensor)

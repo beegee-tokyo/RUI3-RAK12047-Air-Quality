@@ -39,7 +39,7 @@ extern volatile sensors_t found_sensors[];
 // #define LIGHT2_ID 7	   // RAK12010 light sensor
 // #define EEPROM_ID 8	   // RAK15000 EEPROM module
 // #define MQ2_ID 9	   // RAK12004 MQ2 CO2 gas sensor
-// #define MG812_ID 10	   // RAK12008 MG812 CO2 gas sensor
+#define SCT31_ID 10 // RAK12008 SCT31 CO2 gas sensor
 // #define MQ3_ID 11	   // RAK12009 MQ3 Alcohol gas sensor
 // #define TOF_ID 12	   // RAK12014 Laser ToF sensor
 // #define RTC_ID 13	   // RAK12002 RTC module
@@ -52,11 +52,12 @@ extern volatile sensors_t found_sensors[];
 // #define TOUCH_ID 20	   // RAK14002 Touch Pad
 // #define CURRENT_ID 21  // RAK16000 current sensor
 // #define MPU_ID 22	   // RAK1905 9DOF MPU9250 sensor
-// #define CO2_ID 23	   // RAK12037 CO2 sensor
+#define CO2_ID 23 // RAK12037 CO2 sensor
 // #define FIR_ID 24	   // RAK12003 FIR temperature sensor
 // #define TEMP_ARR_ID 25 // RAK12040 Temp Array sensor
 // #define DOF_ID 26	   // RAK12034 9DOF BMX160 sensor
 // #define ACC2_ID 27	   // RAK12032 ADXL313 accelerometer
+#define PM_ID 28 // RAK12039 particle matter sensor
 
 // LoRaWAN stuff
 #include "wisblock_cayenne.h"
@@ -64,8 +65,8 @@ extern volatile sensors_t found_sensors[];
 #define LPP_CHANNEL_BATT 1	// Base Board
 #define LPP_CHANNEL_HUMID 2 // RAK1901
 #define LPP_CHANNEL_TEMP 3	// RAK1901
-#define LPP_CHANNEL_PRESS 4			   // RAK1902
-#define LPP_CHANNEL_LIGHT 5			   // RAK1903
+// #define LPP_CHANNEL_PRESS 4			   // RAK1902
+// #define LPP_CHANNEL_LIGHT 5			   // RAK1903
 #define LPP_CHANNEL_HUMID_2 6 // RAK1906
 #define LPP_CHANNEL_TEMP_2 7  // RAK1906
 #define LPP_CHANNEL_PRESS_2 8 // RAK1906
@@ -95,11 +96,14 @@ extern volatile sensors_t found_sensors[];
 // #define LPP_CHANNEL_TOUCH_1 32		   // RAK14002
 // #define LPP_CHANNEL_TOUCH_2 33		   // RAK14002
 // #define LPP_CHANNEL_TOUCH_3 34		   // RAK14002
-// #define LPP_CHANNEL_CO2_2 35		   // RAK12037
-// #define LPP_CHANNEL_CO2_Temp_2 36	   // RAK12037
-// #define LPP_CHANNEL_CO2_HUMID_2 37	   // RAK12037
+#define LPP_CHANNEL_CO2_2 35	   // RAK12037
+#define LPP_CHANNEL_CO2_Temp_2 36  // RAK12037
+#define LPP_CHANNEL_CO2_HUMID_2 37 // RAK12037
 // #define LPP_CHANNEL_TEMP_3 38		   // RAK12003
 // #define LPP_CHANNEL_TEMP_4 39		   // RAK12003
+#define LPP_CHANNEL_PM_1_0 40  // RAK12039
+#define LPP_CHANNEL_PM_2_5 41  // RAK12039
+#define LPP_CHANNEL_PM_10_0 42 // RAK12039
 
 extern WisCayenne g_solution_data;
 
@@ -111,6 +115,10 @@ void get_rak1906_values(float *values);
 bool init_rak1901(void);
 void read_rak1901(void);
 void get_rak1901_values(float *values);
+bool init_rak12037(void);
+void read_rak12037(void);
+bool init_rak12039(void);
+void read_rak12039(void);
 bool init_rak12047(void);
 void read_rak12047(void);
 

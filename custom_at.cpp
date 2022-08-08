@@ -67,11 +67,11 @@ int freq_send_handler(SERIAL_PORT port, char *cmd, stParam *param)
 
 		// MYLOG("AT_CMD", "New frequency %ld", g_lorawan_settings.send_repeat_time);
 		// Stop the timer
-		udrv_timer_stop(TIMER_0);
+		api.system.timer.stop(RAK_TIMER_0);
 		if (g_send_repeat_time != 0)
 		{
 			// Restart the timer
-			udrv_timer_start(TIMER_0, g_send_repeat_time, NULL);
+			api.system.timer.start(RAK_TIMER_0, g_send_repeat_time, NULL);
 		}
 		// Save custom settings
 		save_at_setting(SEND_FREQ_OFFSET);
@@ -190,7 +190,7 @@ bool save_at_setting(uint32_t setting_type)
 }
 
 /** Regions as text array */
-char *regions_list[] = {"EU433", "CN470", "RU864", "IN865", "EU868", "US915", "AU915", "KR920", "AS923", "AS923-2", "AS923-3", "AS923-4"};
+// char *regions_list[] = {"EU433", "CN470", "RU864", "IN865", "EU868", "US915", "AU915", "KR920", "AS923", "AS923-2", "AS923-3", "AS923-4"};
 /** Network modes as text array*/
 char *nwm_list[] = {"P2P", "LoRaWAN", "FSK"};
 
@@ -226,7 +226,7 @@ int status_handler(SERIAL_PORT port, char *cmd, stParam *param)
 			Serial.printf("Network %s\r\n", api.lorawan.njs.get() ? "joined" : "not joined");
 			region_set = api.lorawan.band.get();
 			Serial.printf("Region: %d\r\n", region_set);
-			Serial.printf("Region: %s\r\n", regions_list[region_set]);
+			// Serial.printf("Region: %s\r\n", regions_list[region_set]);
 			if (api.lorawan.njm.get())
 			{
 				Serial.println("OTAA mode");
@@ -267,6 +267,7 @@ int status_handler(SERIAL_PORT port, char *cmd, stParam *param)
 		}
 		else if (nw_mode == 0)
 		{
+			Serial.println("P2P mode");
 			Serial.printf("Frequency = %d\r\n", api.lorawan.pfreq.get());
 			Serial.printf("SF = %d\r\n", api.lorawan.psf.get());
 			Serial.printf("BW = %d\r\n", api.lorawan.pbw.get());
@@ -276,6 +277,7 @@ int status_handler(SERIAL_PORT port, char *cmd, stParam *param)
 		}
 		else
 		{
+			Serial.println("FSK mode");
 			Serial.printf("Frequency = %d\r\n", api.lorawan.pfreq.get());
 			Serial.printf("Bitrate = %d\r\n", api.lorawan.pbr.get());
 			Serial.printf("Deviaton = %d\r\n", api.lorawan.pfdev.get());
